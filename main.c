@@ -10,9 +10,9 @@ struct Territorio {
 
 int main(){
     struct Territorio territorios [5];
-    int i;
+    int i, tp=5;
     printf("Cadastro dos Territorios \n");
-    for(i = 0; i <5; i++) {
+    for(i = 0; i <tp; i++) {
         printf("Territorio %d\n", i +1);
         
         //Nome do territorio
@@ -29,7 +29,7 @@ int main(){
         
     }
     printf("\n\n Resumo dos territorios cadastrados\n");
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < tp; i++){
         printf("\nTerritorio %d:\n", i + 1);
         printf("Nome: %s\n", territorios [i].nome);
         printf("Cor do exercito: %s\n", territorios[i].cor);
