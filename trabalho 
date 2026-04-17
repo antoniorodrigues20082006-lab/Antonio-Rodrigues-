@@ -1,0 +1,274 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define TP 6
+#define JOGADORES 6
+#define MISSOES 3
+
+// Estrutura de território
+struct Territorio {
+    char nome[30];
+    char cor[10];
+    int tropas;
+    int moeda;
+    int dono;
+};
+
+// Estrutura de missão
+struct Missao {
+    char descricao[100];
+    int tipo; // 0 = conquistar, 1 = moedas, 2 = tropas
+    int objetivo;
+};
+
+// Lista de missões
+struct Missao listaMissoes[MISSOES] = {
+    {"Conquistar 4 territorios", 0, 4},
+    {"Acumular 200 moedas", 1, 200},
+    {"Ter 50 tropas em um territorio", 2, 50}
+};
+
+// Mapa (vizinhança)
+int mapa[TP][TP] = {
+    {0,1,0,1,0,0},
+    {1,0,1,0,1,0},
+    {0,1,0,0,0,1},
+    {1,0,0,0,1,0},
+    {0,1,0,1,0,1},
+    {0,0,1,0,1,0}
+};
+
+// Mostrar mapa
+void mostrarMapa(struct Territorio t[]) {
+    printf("\n===== MAPA =====\n");
+    for (int i = 0; i < TP; i++) {
+        printf("[%d] %s | Dono: J%d | Tropas: %d | Moeda: %d\n",
+               i, t[i].nome, t[i].dono + 1, t[i].tropas, t[i].moeda);
+    }
+}
+
+// Sistema de batalha
+void batalha(struct Territorio t[], int atc, int def) {
+    int ataque = t[atc].tropas;
+    int defesa = t[def].tropas;
+
+    int dado = rand() % 6 + 1;
+
+    int dano = (ataque / 3) + dado;
+    dano -= (defesa / 5);
+
+    if (dano < 1) dano = 1;
+
+    t[def].tropas -= dano;
+
+    int contra = defesa / 4;
+    t[atc].tropas -= contra;
+
+    if (t[def].tropas < 0) t[def].tropas = 0;
+    if (t[atc].tropas < 0) t[atc].tropas = 0;
+
+    printf("\n=== COMBATE ===\n");
+    printf("Dano: %d | Contra: %d\n", dano, contra);
+
+    // conquista
+    if (t[def].tropas == 0) {
+        printf("🏴 %s foi conquistado por %s!\n",
+               t[def].nome, t[atc].nome);
+
+        t[def].dono = t[atc].dono;
+        t[def].tropas = t[atc].tropas / 2;
+        t[atc].tropas /= 2;
+    }
+}
+
+// Verifica vitória por domínio total
+int verificarVitoria(struct Territorio t[]) {
+    int dono = t[0].dono;
+    for (int i = 1; i < TP; i++) {
+        if (t[i].dono != dono) return -1;
+    }
+    return dono;
+}
+
+// Verifica missão
+int verificarMissao(struct Territorio t[], struct Missao m, int jogador) {
+
+    // Conquistar territórios
+    if (m.tipo == 0) {
+        int count = 0;
+        for (int i = 0; i < TP; i++) {
+            if (t[i].dono == jogador) count++;
+        }
+        return count >= m.objetivo;
+    }
+
+    // Moedas
+    if (m.tipo == 1) {
+        int total = 0;
+        for (int i = 0; i < TP; i++) {
+            if (t[i].dono == jogador) {
+                total += t[i].moeda;
+            }
+        }
+        return total >= m.objetivo;
+    }
+
+    // Tropas
+    if (m.tipo == 2) {
+        for (int i = 0; i < TP; i++) {
+            if (t[i].dono == jogador && t[i].tropas >= m.objetivo)
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
+// Compra de tropas
+void comprarTropas(struct Territorio t[], int jogador) {
+    printf("\n=== COMPRA DE TROPAS - Jogador %d ===\n", jogador + 1);
+
+    for (int i = 0; i < TP; i++) {
+        if (t[i].dono == jogador) {
+            int qtd, custo = 10;
+            printf("Territorio %s | Tropas: %d | Moeda: %d\n",
+                   t[i].nome, t[i].tropas, t[i].moeda);
+
+            printf("Quantas tropas deseja comprar? ");
+            scanf("%d", &qtd);
+
+            int gasto = qtd * custo;
+
+            if (gasto > t[i].moeda) {
+                printf("Moeda insuficiente! Compra limitada.\n");
+                qtd = t[i].moeda / custo;
+                gasto = qtd * custo;
+            }
+
+            t[i].tropas += qtd;
+            t[i].moeda -= gasto;
+
+            printf("Compra: +%d tropas | Moeda restante: %d\n",
+                   qtd, t[i].moeda);
+        }
+    }
+}
+
+int main() {
+    struct Territorio t[TP];
+    struct Missao missoesJogador[JOGADORES];
+
+    int turno, jogador = 0;
+
+    char coresDisponiveis[6][10] = {
+        "vermelho", "azul", "verde", "amarelo", "preto", "roxo"
+    };
+
+    srand(time(NULL));
+
+    printf("===== CRIACAO DOS TERRITORIOS =====\n");
+
+    for (int i = 0; i < TP; i++) {
+        printf("\nTerritorio %d\n", i);
+
+        printf("Nome: ");
+        scanf("%s", t[i].nome);
+
+        printf("Escolha a cor:\n");
+        for (int j = 0; j < 6; j++)
+            printf("[%d] %s\n", j, coresDisponiveis[j]);
+
+        int corEscolhida;
+        scanf("%d", &corEscolhida);
+
+        while (corEscolhida < 0 || corEscolhida >= 6) {
+            printf("Invalido: ");
+            scanf("%d", &corEscolhida);
+        }
+
+        strcpy(t[i].cor, coresDisponiveis[corEscolhida]);
+
+        t[i].tropas = 20;
+        t[i].moeda = 100;
+        t[i].dono = i % JOGADORES;
+
+        printf("Dono: Jogador %d | Cor: %s\n",
+               t[i].dono + 1, t[i].cor);
+    }
+
+    // Distribuir missões
+    for (int i = 0; i < JOGADORES; i++) {
+        int sorteio = rand() % MISSOES;
+        missoesJogador[i] = listaMissoes[sorteio];
+
+        printf("Jogador %d recebeu a missao: %s\n",
+               i + 1, missoesJogador[i].descricao);
+    }
+
+    // Loop principal
+    for (turno = 0; turno < 50; turno++) {
+        printf("\n========================\n");
+        printf("Turno %d | Jogador %d\n", turno + 1, jogador + 1);
+
+        mostrarMapa(t);
+
+        if ((turno + 1) % 6 == 0) {
+            comprarTropas(t, jogador);
+        }
+
+        int atc, def;
+
+        printf("\nEscolha territorio SEU:\n");
+        for (int i = 0; i < TP; i++) {
+            if (t[i].dono == jogador && t[i].tropas > 0) {
+                printf("[%d] %s\n", i, t[i].nome);
+            }
+        }
+        scanf("%d", &atc);
+
+        if (t[atc].dono != jogador) {
+            printf("Nao e seu!\n");
+            continue;
+        }
+
+        printf("Escolha alvo:\n");
+        for (int i = 0; i < TP; i++) {
+            if (mapa[atc][i] && t[i].dono != jogador) {
+                printf("[%d] %s\n", i, t[i].nome);
+            }
+        }
+        scanf("%d", &def);
+
+        if (def < 0 || def >= TP || t[def].dono == jogador) {
+            printf("Invalido!\n");
+            continue;
+        }
+
+        if (mapa[atc][def] == 0) {
+            printf("Nao vizinho!\n");
+            continue;
+        }
+
+        batalha(t, atc, def);
+
+        // Vitória por missão
+        if (verificarMissao(t, missoesJogador[jogador], jogador)) {
+            printf("\n🎯 Jogador %d completou a missao!\n", jogador + 1);
+            printf("Missao: %s\n", missoesJogador[jogador].descricao);
+            printf("🏆 VENCEU O JOGO!\n");
+            break;
+        }
+
+        int vencedor = verificarVitoria(t);
+        if (vencedor != -1) {
+            printf("\n🏆 Jogador %d venceu por dominacao!\n", vencedor + 1);
+            break;
+        }
+
+        jogador = (jogador + 1) % JOGADORES;
+    }
+
+    return 0;
+}
